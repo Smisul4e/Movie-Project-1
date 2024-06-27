@@ -1,108 +1,129 @@
-import random
-import statistics
+import movie_storage
 import matplotlib.pyplot as plt
-from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
-from colorama import Fore, Style, init
-import json
-import os
+from colorama import Fore, init
+import random
 
-FILE_PATH = 'movies.json'
-
-# Initialize colorama
-init(autoreset=True)
-
-def load_movies_from_file():
-    if os.path.exists(FILE_PATH):
-        with open(FILE_PATH, 'r') as file:
-            return json.load(file)
-    else:
-        return {}
-
-def save_movies_to_file(movies):
-    with open(FILE_PATH, 'w') as file:
-        json.dump(movies, file, indent=4)
-
-movies = load_movies_from_file()
 
 def list_movies():
+    movies = movie_storage.get_movies()
     if not movies:
-        print(f"{Fore.RED}No movies found in the database.{Style.RESET_ALL}")
+        print(Fore.YELLOW + "No movies found in the database.")
     else:
-        print(f"{Fore.BLUE}{len(movies)} movies in total{Style.RESET_ALL}")
-        for title, info in movies.items():
-            print(f"{title}: {info['rating']} (Year: {info['year']})")
+        print(Fore.GREEN + f"{len(movies)} movies in total")
+        for title, details in movies.items():
+            print(f"{title} ({details['year']}): {details['rating']}")
+
 
 def add_movie():
-    title = input("Enter movie title: ").strip()
+    movies = movie_storage.get_movies()
+    title = input("Enter the movie title: ")
     if title in movies:
-        print(f"{Fore.RED}The movie '{title}' already exists in the database.{Style.RESET_ALL}")
+        print(Fore.RED + f"Movie '{title}' already exists!")
         return
-    rating = float(input("Enter movie rating: ").strip())
-    year = int(input("Enter movie release year: ").strip())
-    movies[title] = {'rating': rating, 'year': year}
-    save_movies_to_file(movies)
-    print(f"{Fore.GREEN}Movie '{title}' added successfully!{Style.RESET_ALL}")
+    rating = float(input("Enter the movie rating: "))
+    year = int(input("Enter the year of release: "))
+    movie_storage.add_movie(title, year, rating)
+    print(Fore.GREEN + f"Movie '{title}' added successfully.")
+
 
 def delete_movie():
-    title = input("Enter movie title to delete: ").strip()
-    if title not in movies:
-        print(f"{Fore.RED}The movie '{title}' does not exist in the database.{Style.RESET_ALL}")
-        return
-    del movies[title]
-    save_movies_to_file(movies)
-    print(f"{Fore.GREEN}Movie '{title}' deleted successfully!{Style.RESET_ALL}")
+    title = input("Enter the movie title to delete: ")
+    if movie_storage.delete_movie(title):
+        print(Fore.GREEN + f"Movie '{title}' deleted successfully.")
+    else:
+        print(Fore.RED + f"Movie '{title}' not found in the database.")
+
 
 def update_movie():
-    title = input("Enter movie title to update: ").strip()
-    if title not in movies:
-        print(f"{Fore.RED}The movie '{title}' does not exist in the database.{Style.RESET_ALL}")
-        return
-    rating = float(input("Enter new movie rating: ").strip())
-    movies[title]['rating'] = rating
-    save_movies_to_file(movies)
-    print(f"{Fore.GREEN}Movie '{title}' updated successfully!{Style.RESET_ALL}")
+    title = input("Enter the movie title to update: ")
+    if title in movie_storage.get_movies():
+        rating = float(input("Enter the new rating: "))
+        if movie_storage.update_movie(title, rating):
+            print(Fore.GREEN + f"Movie '{title}' updated successfully.")
+        else:
+            print(Fore.RED + "Update failed.")
+    else:
+        print(Fore.RED + f"Movie '{title}' not found in the database.")
 
-def create_rating_histogram():
-    ratings = [info['rating'] for info in movies.values()]
+
+def display_stats():
+    movies = movie_storage.get_movies()
+    if not movies:
+        print(Fore.YELLOW + "No movies to display statistics.")
+        return
+
+    ratings = [details['rating'] for details in movies.values()]
+    average = sum(ratings) / len(ratings)
+    median = sorted(ratings)[len(ratings) // 2] if len(ratings) % 2 != 0 else \
+        sum(sorted(ratings)[len(ratings) // 2 - 1:len(ratings) // 2 + 1]) / 2
+    best_movies = [title for title, details in movies.items() if details['rating'] == max(ratings)]
+    worst_movies = [title for title, details in movies.items() if details['rating'] == min(ratings)]
+
+    print(Fore.GREEN + f"Average rating: {average:.2f}")
+    print(Fore.GREEN + f"Median rating: {median:.2f}")
+    print(Fore.GREEN + f"Best movie(s): {', '.join(best_movies)}")
+    print(Fore.GREEN + f"Worst movie(s): {', '.join(worst_movies)}")
+
+
+def create_histogram():
+    movies = movie_storage.get_movies()
+    ratings = [details['rating'] for details in movies.values()]
     plt.hist(ratings, bins=10, edgecolor='black')
-    plt.xlabel('Rating')
+    plt.xlabel('Ratings')
     plt.ylabel('Number of Movies')
-    plt.title('Movies Rating Histogram')
-    file_name = input("Enter the filename to save the histogram (e.g., histogram.png): ").strip()
-    plt.savefig(file_name)
-    print(f"{Fore.GREEN}Histogram saved as {file_name}{Style.RESET_ALL}")
+    plt.title('Movie Ratings Histogram')
+    filename = input("Enter the filename to save the histogram: ")
+    plt.savefig(filename)
+    print(Fore.GREEN + f"Histogram saved to {filename}")
+
 
 def search_movie():
-    query = input("Enter part of movie name: ").strip().lower()
-    results = [title for title in movies if query in title.lower()]
-    if results:
-        for title in results:
-            print(f"{title}: {movies[title]['rating']} (Year: {movies[title]['year']})")
+    movies = movie_storage.get_movies()
+    query = input("Enter part of the movie name: ")
+    matches = [title for title in movies if process.extractOne(query.lower(), [title.lower()])[1] >= 80]
+
+    if matches:
+        print(Fore.GREEN + "Found movies:")
+        for match in matches:
+            print(f"{match}: {movies[match]['rating']}")
     else:
-        print(f"{Fore.RED}No direct match found for '{query}'. Searching for similar titles...{Style.RESET_ALL}")
-        suggestions = process.extract(query, movies.keys(), limit=3)
-        for suggestion in suggestions:
-            title, score = suggestion
-            print(f"Did you mean: {title}? (Rating: {movies[title]['rating']}, Year: {movies[title]['year']})")
+        print(Fore.RED + f"No exact match for '{query}' found.")
+        suggestions = process.extract(query, movies.keys(), limit=5)
+        if suggestions:
+            print(Fore.YELLOW + "Did you mean:")
+            for suggestion, score in suggestions:
+                if score > 60:
+                    print(f"{suggestion} ({movies[suggestion]['year']}): {movies[suggestion]['rating']}")
+
+
+def random_movie():
+    movies = movie_storage.get_movies()
+    if not movies:
+        print(Fore.YELLOW + "No movies found in the database.")
+    else:
+        title = random.choice(list(movies.keys()))
+        print(Fore.GREEN + f"Random movie: {title} ({movies[title]['year']}): {movies[title]['rating']}")
+
 
 def main():
+    init(autoreset=True)
     while True:
-        print(f"""
-        {Fore.YELLOW}********** My Movies Database **********{Style.RESET_ALL}
-        Menu:
-        1. List movies
-        2. Add movie
-        3. Delete movie
-        4. Update movie
-        5. Stats
-        6. Random movie
-        7. Search movie
-        8. Movies sorted by rating
-        9. Create Rating Histogram
-        10. Exit
-        """)
-        choice = input("Enter choice (1-10): ").strip()
+        print(Fore.CYAN + "********** My Movies Database **********")
+        print(Fore.CYAN + "Menu:")
+        print(Fore.CYAN + "1. List movies")
+        print(Fore.CYAN + "2. Add movie")
+        print(Fore.CYAN + "3. Delete movie")
+        print(Fore.CYAN + "4. Update movie")
+        print(Fore.CYAN + "5. Stats")
+        print(Fore.CYAN + "6. Random movie")
+        print(Fore.CYAN + "7. Search movie")
+        print(Fore.CYAN + "8. Movies sorted by rating")
+        print(Fore.CYAN + "9. Create Rating Histogram")
+        print(Fore.CYAN + "10. Exit")
+
+        choice = input(Fore.YELLOW + "Enter choice (1-10): ")
+
         if choice == '1':
             list_movies()
         elif choice == '2':
@@ -112,22 +133,22 @@ def main():
         elif choice == '4':
             update_movie()
         elif choice == '5':
-            # Stats function call here
-            pass
+            display_stats()
         elif choice == '6':
-            # Random movie function call here
-            pass
+            random_movie()
         elif choice == '7':
             search_movie()
         elif choice == '8':
-            # Movies sorted by rating function call here
-            pass
+            sorted_movies = sorted(movie_storage.get_movies().items(), key=lambda item: item[1]['rating'], reverse=True)
+            for title, details in sorted_movies:
+                print(f"{title} ({details['year']}): {details['rating']}")
         elif choice == '9':
-            create_rating_histogram()
+            create_histogram()
         elif choice == '10':
             break
         else:
-            print(f"{Fore.RED}Invalid choice. Please enter a number between 1 and 10.{Style.RESET_ALL}")
+            print(Fore.RED + "Invalid choice. Please try again.")
+
 
 if __name__ == "__main__":
     main()
