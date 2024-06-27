@@ -1,6 +1,8 @@
 import random
 import statistics
 import matplotlib.pyplot as plt
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 
 
 def list_movies(movies):
@@ -65,7 +67,14 @@ def search_movie(movies):
         for movie, rating in found_movies.items():
             print(f"{movie}: {rating}")
     else:
-        print("No movies found")
+        similar_movies = process.extract(part, movies.keys(), scorer=fuzz.partial_ratio)
+        if similar_movies:
+            print(f'The movie "{part}" does not exist. Did you mean:')
+            for movie, score in similar_movies:
+                if score > 70:  # Adjust this threshold based on your preference
+                    print(f"{movie}")
+        else:
+            print(f'No similar movies found for "{part}"')
 
 
 def movies_sorted_by_rating(movies):
