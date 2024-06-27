@@ -1,5 +1,6 @@
 import random
 import statistics
+import matplotlib.pyplot as plt
 
 
 def list_movies(movies):
@@ -73,6 +74,21 @@ def movies_sorted_by_rating(movies):
         print(f"{movie}: {rating}")
 
 
+def create_rating_histogram(movies):
+    if not movies:
+        print("No movies in the database")
+        return
+    ratings = list(movies.values())
+    plt.hist(ratings, bins=10, edgecolor='black')
+    plt.title('Movie Ratings Histogram')
+    plt.xlabel('Rating')
+    plt.ylabel('Number of Movies')
+    filename = input("Enter filename to save the histogram (e.g., histogram.png): ")
+    plt.savefig(filename)
+    plt.close()
+    print(f"Histogram saved to {filename}")
+
+
 def main():
     movies = {
         "The Shawshank Redemption": 9.5,
@@ -98,8 +114,9 @@ def main():
         print("6. Random movie")
         print("7. Search movie")
         print("8. Movies sorted by rating")
-        print("9. Exit")
-        choice = input("Enter choice (1-9): ")
+        print("9. Create Rating Histogram")
+        print("10. Exit")
+        choice = input("Enter choice (1-10): ")
 
         if choice == "1":
             list_movies(movies)
@@ -118,6 +135,8 @@ def main():
         elif choice == "8":
             movies_sorted_by_rating(movies)
         elif choice == "9":
+            create_rating_histogram(movies)
+        elif choice == "10":
             print("Exiting...")
             break
         else:
