@@ -3,5 +3,9 @@
         "year": 2010,
         "rating": 9.0,
         "poster": "https://link-to-poster.com/inception.jpg"
+    },
+    "Plam": {
+        "year": 2023,
+        "rating": 8.9
     }
 }
