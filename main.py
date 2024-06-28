@@ -1,12 +1,17 @@
-import movie_storage
+import json_storage
 import matplotlib.pyplot as plt
 from fuzzywuzzy import process
 from colorama import Fore, init
 import random
 
 
-def list_movies():
-    movies = movie_storage.get_movies()
+def get_storage_for_user(user):
+    filename = f"{user}.json"
+    return json_storage.JSONStorage(filename)
+
+
+def list_movies(storage):
+    movies = storage.list_movies()
     if not movies:
         print(Fore.YELLOW + "No movies found in the database.")
     else:
@@ -15,40 +20,34 @@ def list_movies():
             print(f"{title} ({details['year']}): {details['rating']}")
 
 
-def add_movie():
-    movies = movie_storage.get_movies()
+def add_movie(storage):
     title = input("Enter the movie title: ")
-    if title in movies:
-        print(Fore.RED + f"Movie '{title}' already exists!")
-        return
-    rating = float(input("Enter the movie rating: "))
     year = int(input("Enter the year of release: "))
-    movie_storage.add_movie(title, year, rating)
+    rating = float(input("Enter the movie rating: "))
+    poster = input("Enter the URL of the movie poster: ")
+    storage.add_movie(title, year, rating, poster)
     print(Fore.GREEN + f"Movie '{title}' added successfully.")
 
 
-def delete_movie():
+def delete_movie(storage):
     title = input("Enter the movie title to delete: ")
-    if movie_storage.delete_movie(title):
+    if storage.delete_movie(title):
         print(Fore.GREEN + f"Movie '{title}' deleted successfully.")
     else:
         print(Fore.RED + f"Movie '{title}' not found in the database.")
 
 
-def update_movie():
+def update_movie(storage):
     title = input("Enter the movie title to update: ")
-    if title in movie_storage.get_movies():
-        rating = float(input("Enter the new rating: "))
-        if movie_storage.update_movie(title, rating):
-            print(Fore.GREEN + f"Movie '{title}' updated successfully.")
-        else:
-            print(Fore.RED + "Update failed.")
+    rating = float(input("Enter the new rating: "))
+    if storage.update_movie(title, rating):
+        print(Fore.GREEN + f"Movie '{title}' updated successfully.")
     else:
         print(Fore.RED + f"Movie '{title}' not found in the database.")
 
 
-def display_stats():
-    movies = movie_storage.get_movies()
+def display_stats(storage):
+    movies = storage.list_movies()
     if not movies:
         print(Fore.YELLOW + "No movies to display statistics.")
         return
@@ -66,8 +65,8 @@ def display_stats():
     print(Fore.GREEN + f"Worst movie(s): {', '.join(worst_movies)}")
 
 
-def create_histogram():
-    movies = movie_storage.get_movies()
+def create_histogram(storage):
+    movies = storage.list_movies()
     ratings = [details['rating'] for details in movies.values()]
     plt.hist(ratings, bins=10, edgecolor='black')
     plt.xlabel('Ratings')
@@ -78,8 +77,8 @@ def create_histogram():
     print(Fore.GREEN + f"Histogram saved to {filename}")
 
 
-def search_movie():
-    movies = movie_storage.get_movies()
+def search_movie(storage):
+    movies = storage.list_movies()
     query = input("Enter part of the movie name: ")
     matches = [title for title in movies if process.extractOne(query.lower(), [title.lower()])[1] >= 80]
 
@@ -97,8 +96,8 @@ def search_movie():
                     print(f"{suggestion} ({movies[suggestion]['year']}): {movies[suggestion]['rating']}")
 
 
-def random_movie():
-    movies = movie_storage.get_movies()
+def random_movie(storage):
+    movies = storage.list_movies()
     if not movies:
         print(Fore.YELLOW + "No movies found in the database.")
     else:
@@ -106,37 +105,11 @@ def random_movie():
         print(Fore.GREEN + f"Random movie: {title} ({movies[title]['year']}): {movies[title]['rating']}")
 
 
-def filter_movies(movies):
-    print("Enter minimum rating (leave blank for no minimum rating):")
-    min_rating_str = input().strip()
-    min_rating = float(min_rating_str) if min_rating_str else float('-inf')
-
-    print("Enter start year (leave blank for no start year):")
-    start_year_str = input().strip()
-    start_year = int(start_year_str) if start_year_str else float('-inf')
-
-    print("Enter end year (leave blank for no end year):")
-    end_year_str = input().strip()
-    end_year = int(end_year_str) if end_year_str else float('inf')
-
-    filtered_movies = []
-    for title, details in movies.items():
-        rating = details['rating']
-        year = details['year']
-
-        if rating >= min_rating and start_year <= year <= end_year:
-            filtered_movies.append((title, year, rating))
-
-    if filtered_movies:
-        print("\nFiltered Movies:")
-        for title, year, rating in filtered_movies:
-            print(f"{title} ({year}): {rating}")
-    else:
-        print("\nNo movies found matching the criteria.")
-
-
 def main():
     init(autoreset=True)
+    user = input("Enter your username: ")
+    storage = get_storage_for_user(user)
+
     while True:
         print(Fore.CYAN + "********** My Movies Database **********")
         print(Fore.CYAN + "Menu:")
@@ -149,34 +122,31 @@ def main():
         print(Fore.CYAN + "7. Search movie")
         print(Fore.CYAN + "8. Movies sorted by rating")
         print(Fore.CYAN + "9. Create Rating Histogram")
-        print(Fore.CYAN + "10. Filter movies")
-        print(Fore.CYAN + "11. Exit")
+        print(Fore.CYAN + "10. Exit")
 
-        choice = input(Fore.YELLOW + "Enter choice (1-11): ")
+        choice = input(Fore.YELLOW + "Enter choice (1-10): ")
 
         if choice == '1':
-            list_movies()
+            list_movies(storage)
         elif choice == '2':
-            add_movie()
+            add_movie(storage)
         elif choice == '3':
-            delete_movie()
+            delete_movie(storage)
         elif choice == '4':
-            update_movie()
+            update_movie(storage)
         elif choice == '5':
-            display_stats()
+            display_stats(storage)
         elif choice == '6':
-            random_movie()
+            random_movie(storage)
         elif choice == '7':
-            search_movie()
+            search_movie(storage)
         elif choice == '8':
-            sorted_movies = sorted(movie_storage.get_movies().items(), key=lambda item: item[1]['rating'], reverse=True)
+            sorted_movies = sorted(storage.list_movies().items(), key=lambda item: item[1]['rating'], reverse=True)
             for title, details in sorted_movies:
                 print(f"{title} ({details['year']}): {details['rating']}")
         elif choice == '9':
-            create_histogram()
+            create_histogram(storage)
         elif choice == '10':
-            filter_movies(movie_storage.get_movies())
-        elif choice == '11':
             break
         else:
             print(Fore.RED + "Invalid choice. Please try again.")
