@@ -1,20 +1,20 @@
 import json
 from istorage import IStorage
 
-class JSONStorage(IStorage):
-    def __init__(self, filename):
-        self.filename = filename
+class StorageJson(IStorage):
+    def __init__(self, file_name):
+        self.file_name = file_name
 
     def list_movies(self):
         try:
-            with open(self.filename, 'r') as file:
+            with open(self.file_name, 'r') as file:
                 return json.load(file)
         except FileNotFoundError:
             return {}
 
-    def add_movie(self, title, year, rating, poster):
+    def add_movie(self, title, year, rating):
         movies = self.list_movies()
-        movies[title] = {"year": year, "rating": rating, "poster": poster}
+        movies[title] = {"year": year, "rating": rating}
         self._save_movies(movies)
 
     def delete_movie(self, title):
@@ -34,5 +34,5 @@ class JSONStorage(IStorage):
         return False
 
     def _save_movies(self, movies):
-        with open(self.filename, 'w') as file:
+        with open(self.file_name, 'w') as file:
             json.dump(movies, file, indent=4)
