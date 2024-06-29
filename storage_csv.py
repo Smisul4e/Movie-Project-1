@@ -28,10 +28,11 @@ class StorageCsv:
             with open(self.file_path, mode='r', newline='') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    title = row['title']
-                    rating = float(row['rating'])
-                    year = int(row['year'])
-                    movies[title] = {'rating': rating, 'year': year}
+                    title = row.get('title', '')
+                    rating = float(row.get('rating', 0.0))
+                    year = int(row.get('year', 0))
+                    if title:
+                        movies[title] = {'rating': rating, 'year': year}
         except FileNotFoundError:
             print(f"Error: File '{self.file_path}' not found.")
         except ValueError as e:
@@ -108,4 +109,3 @@ class StorageCsv:
                     writer.writerow([title, info['year'], info['rating']])
         except IOError as e:
             print(f"Error: Failed to write to file '{self.file_path}': {e}")
-

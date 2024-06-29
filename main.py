@@ -1,9 +1,6 @@
-# main.py
-
 from colorama import Fore, init
 from movie_app import MovieApp
 from json_storage import StorageJson
-
 
 def main():
     init(autoreset=True)
@@ -39,7 +36,6 @@ def main():
             break
         else:
             print(Fore.RED + "Invalid choice. Please try again.")
-
 
 if __name__ == "__main__":
     main()
